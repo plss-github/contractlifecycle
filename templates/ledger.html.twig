@@ -1,0 +1,192 @@
+{% macro summary_table(title, group, billing) %}
+   <div class="col-lg-6 col-xxl-4 mb-3">
+      <h4 class="mb-2">{{ title }}</h4>
+      {% if group is empty %}
+         <div class="text-muted">—</div>
+      {% else %}
+         <table class="table table-sm card-table">
+            <thead><tr>
+               <th></th><th class="text-end">{{ __('Apont.', 'contractlifecycle') }}</th>
+               <th class="text-end">{{ __('Gasto', 'contractlifecycle') }}</th>
+               <th class="text-end">{{ __('Debitado', 'contractlifecycle') }}</th>
+               <th class="text-end">{{ __('Diferença', 'contractlifecycle') }}</th>
+               {% if billing %}<th class="text-end">{{ __('Valor', 'contractlifecycle') }}</th>{% endif %}
+            </tr></thead>
+            <tbody>
+               {% for key, v in group %}
+                  <tr>
+                     <td>{{ key }}</td><td class="text-end">{{ v.count }}</td>
+                     <td class="text-end">{{ v.spent }}</td><td class="text-end">{{ v.debited }}</td>
+                     <td class="text-end text-muted">{{ v.diff }}</td>
+                     {% if billing %}<td class="text-end">{{ v.amount }}</td>{% endif %}
+                  </tr>
+               {% endfor %}
+            </tbody>
+         </table>
+      {% endif %}
+   </div>
+{% endmacro %}
+
+<div class="clc-ledger">
+   <div class="clc-totals row g-2 mb-3">
+      {% set cards = [
+         {'label': __('Entradas', 'contractlifecycle'), 'value': totals.credits, 'icon': 'ti-arrow-down-left', 'show': limited},
+         {'label': __('Saídas', 'contractlifecycle'), 'value': totals.debits, 'icon': 'ti-arrow-up-right', 'show': limited},
+         {'label': __('Tempo gasto', 'contractlifecycle'), 'value': totals.spent, 'icon': 'ti-clock', 'show': true},
+         {'label': __('Tempo debitado', 'contractlifecycle'), 'value': totals.debited, 'icon': 'ti-clock-check', 'show': true},
+         {'label': __('Diferença (arredondamento)', 'contractlifecycle'), 'value': totals.diff, 'icon': 'ti-plus-minus', 'show': true},
+         {'label': __('Saldo', 'contractlifecycle'), 'value': totals.balance, 'icon': 'ti-scale', 'show': limited},
+         {'label': __('Valor', 'contractlifecycle'), 'value': totals.amount, 'icon': 'ti-currency-real', 'show': billing},
+      ] %}
+      {% for card in cards|filter(c => c.show) %}
+         <div class="col-6 col-md-4 col-xl">
+            <div class="card card-sm"><div class="card-body py-2">
+               <div class="text-muted small"><i class="ti {{ card.icon }}"></i> {{ card.label }}</div>
+               <div class="h3 mb-0">{{ card.value }}</div>
+            </div></div>
+         </div>
+      {% endfor %}
+   </div>
+
+   <ul class="nav nav-tabs mb-3 clc-subtabs" role="tablist">
+      <li class="nav-item"><button class="nav-link active" type="button" data-clc-subtab="#clc-led-rows-{{ rand }}">
+         {{ __('Lançamentos', 'contractlifecycle') }} <span class="badge bg-secondary-lt ms-1">{{ rows|length }}</span></button></li>
+      <li class="nav-item"><button class="nav-link" type="button" data-clc-subtab="#clc-led-sum-{{ rand }}">
+         {{ __('Resumo', 'contractlifecycle') }}</button></li>
+      {% if can_move %}
+         <li class="nav-item"><button class="nav-link" type="button" data-clc-subtab="#clc-led-move-{{ rand }}">
+            <i class="ti ti-plus"></i> {{ __('Recarga / ajuste', 'contractlifecycle') }}</button></li>
+      {% endif %}
+   </ul>
+
+   <div class="clc-subpanes">
+      {# ---------------- Lançamentos #}
+      <div class="clc-subpane is-active" id="clc-led-rows-{{ rand }}">
+         <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+            <input type="search" class="form-control form-control-sm w-auto" data-clc-filter="#clc-led-table-{{ rand }}"
+                   placeholder="{{ __('Filtrar...', 'contractlifecycle') }}">
+            <form method="post" action="{{ action }}" class="m-0 d-flex gap-2">
+               <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+               <button type="button" class="btn btn-sm btn-outline-primary" data-clc-calendar-open="#clc-cal-{{ rand }}" {{ rows is empty ? 'disabled' }}>
+                  <i class="ti ti-calendar-month"></i> {{ __('Calendário', 'contractlifecycle') }}
+               </button>
+               <button type="submit" name="toggle_reversals" class="btn btn-sm btn-ghost-secondary">
+                  <i class="ti {{ with_reversals ? 'ti-eye-off' : 'ti-eye' }}"></i>
+                  {{ with_reversals ? __('Ocultar estornos', 'contractlifecycle') : __('Mostrar estornos', 'contractlifecycle') }}
+               </button>
+            </form>
+         </div>
+         {% if rows is empty %}
+            <div class="text-muted p-3">{{ __('Nenhum lançamento.', 'contractlifecycle') }}</div>
+         {% else %}
+            <div class="table-responsive">
+               <table class="table table-hover table-sm card-table clc-ledger-table" id="clc-led-table-{{ rand }}">
+                  <thead><tr>
+                     <th>{{ __('Date') }}</th>
+                     <th>{{ __('Origem', 'contractlifecycle') }}</th>
+                     <th>{{ __('Autor', 'contractlifecycle') }}</th>
+                     <th class="text-end">{{ __('Tempo', 'contractlifecycle') }}</th>
+                     <th class="text-end">{{ __('Debitado', 'contractlifecycle') }}</th>
+                     <th class="text-end">{{ __('Diferença', 'contractlifecycle') }}</th>
+                     {% if billing %}<th class="text-end">{{ __('Valor', 'contractlifecycle') }}</th>{% endif %}
+                     {% if limited %}<th class="text-end">{{ __('Saldo', 'contractlifecycle') }}</th>{% endif %}
+                     <th>{{ __('Obs.', 'contractlifecycle') }}</th>
+                  </tr></thead>
+                  <tbody>
+                     {% for row in rows %}
+                        <tr class="{{ row.reversed or row.type == 'reversal' ? 'text-muted clc-reversed' }}">
+                           <td class="text-nowrap">{{ row.date|date('d/m/Y H:i') }}</td>
+                           <td>
+                              {% if row.tickets_id %}<a href="{{ ticket_url }}?id={{ row.tickets_id }}">{{ row.origin }}</a>{% else %}{{ row.origin }}{% endif %}
+                              {% if row.band %}<span class="badge bg-secondary-lt ms-1">{{ row.band }}</span>{% endif %}
+                           </td>
+                           <td>{{ row.author }}</td>
+                           <td class="text-end text-nowrap {{ row.is_credit and row.type != 'reversal' ? 'text-success' }}">{{ row.time }}</td>
+                           <td class="text-end text-nowrap">{{ row.debited }}</td>
+                           <td class="text-end text-nowrap {{ row.diff_raw > 0 ? 'text-warning' }}">{{ row.diff }}</td>
+                           {% if billing %}<td class="text-end text-nowrap">{{ row.amount != 0 ? 'R$ ' ~ row.amount|number_format(2, ',', '.') : '—' }}</td>{% endif %}
+                           {% if limited %}<td class="text-end text-nowrap fw-bold {{ row.balance_raw < 0 ? 'text-danger' }}">{{ row.balance }}</td>{% endif %}
+                           <td class="clc-obs" title="{{ row.comment }}">{{ row.comment|length > 60 ? row.comment|slice(0, 60) ~ '…' : row.comment }}</td>
+                        </tr>
+                     {% endfor %}
+                  </tbody>
+               </table>
+            </div>
+         {% endif %}
+      </div>
+
+      {# ---------------- Resumo #}
+      <div class="clc-subpane" id="clc-led-sum-{{ rand }}">
+         <div class="row">
+            {{ _self.summary_table(__('Por faixa', 'contractlifecycle'), summary.bands, billing) }}
+            {{ _self.summary_table(__('Por técnico', 'contractlifecycle'), summary.authors, billing) }}
+            {{ _self.summary_table(__('Por mês', 'contractlifecycle'), summary.months, billing) }}
+         </div>
+      </div>
+
+      {# ---------------- Movimentar #}
+      {% if can_move %}
+         <div class="clc-subpane" id="clc-led-move-{{ rand }}">
+            <form method="post" action="{{ action }}">
+               <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+               <input type="hidden" name="contracts_id" value="{{ contracts_id }}">
+               <div class="row mb-3">
+                  <label class="col-md-3 col-form-label text-md-end">{{ __('Tipo', 'contractlifecycle') }}</label>
+                  <div class="col-md-5">
+                     <select name="entry_type" class="form-select">
+                        <option value="recharge">{{ __('Recarga (soma horas; abate o saldo negativo)', 'contractlifecycle') }}</option>
+                        <option value="adjustment">{{ __('Ajuste (positivo ou negativo)', 'contractlifecycle') }}</option>
+                     </select>
+                  </div>
+               </div>
+               <div class="row mb-3">
+                  <label class="col-md-3 col-form-label text-md-end">{{ __('Horas', 'contractlifecycle') }}</label>
+                  <div class="col-md-3"><input type="number" step="0.25" name="hours" class="form-control" required></div>
+               </div>
+               <div class="row mb-3">
+                  <label class="col-md-3 col-form-label text-md-end">{{ __('Chamado relacionado', 'contractlifecycle') }}</label>
+                  <div class="col-md-5">{{ ticket_input|raw }}</div>
+               </div>
+               <div class="row mb-3">
+                  <label class="col-md-3 col-form-label text-md-end">{{ __('Observação', 'contractlifecycle') }}</label>
+                  <div class="col-md-5"><textarea name="comment" class="form-control" rows="2"></textarea></div>
+               </div>
+               <div class="offset-md-3">
+                  <button type="submit" name="move" class="btn btn-primary"><i class="ti ti-check"></i> {{ __('Lançar', 'contractlifecycle') }}</button>
+               </div>
+            </form>
+         </div>
+      {% endif %}
+   </div>
+
+   {# ---------------- Calendário (modal; o JS move para o <body> ao abrir) #}
+   <div class="modal fade clc-calendar-modal" id="clc-cal-{{ rand }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+         <div class="modal-content">
+            <div class="modal-header">
+               <h5 class="modal-title"><i class="ti ti-calendar-month me-2"></i>{{ __('Lançamentos por dia', 'contractlifecycle') }}</h5>
+               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+            </div>
+            <div class="modal-body" data-clc-calendar="{{ calendar|json_encode }}"
+                 data-clc-labels="{{ {
+                    'months': ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
+                    'weekdays': ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+                    'entries': __('lançamentos', 'contractlifecycle'),
+                    'spent': __('gasto', 'contractlifecycle'),
+                    'debited': __('debitado', 'contractlifecycle'),
+                    'credits': __('entradas', 'contractlifecycle'),
+                    'withdrawals': __('retiradas', 'contractlifecycle'),
+                    'holiday': __('feriado', 'contractlifecycle'),
+                    'today': __('Hoje', 'contractlifecycle'),
+                    'pick': __('Clique num dia para ver os lançamentos.', 'contractlifecycle'),
+                    'none': __('Nenhum lançamento neste dia.', 'contractlifecycle'),
+                    'time': __('Hora', 'contractlifecycle'),
+                    'origin': __('Origem', 'contractlifecycle'),
+                    'author': __('Autor', 'contractlifecycle'),
+                    'value': __('Valor', 'contractlifecycle'),
+                    'obs': __('Obs.', 'contractlifecycle'),
+                 }|json_encode }}"></div>
+         </div>
+      </div>
+   </div>
+</div>

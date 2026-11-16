@@ -1,0 +1,73 @@
+{#
+ # Regras do ciclo de vida em sub-abas. Mesmo formulário nos três níveis:
+ #  - global: todos os campos têm valor
+ #  - tipo/contrato: cada campo tem "Personalizar"; desligado = herda (valor herdado mostrado ao lado)
+ #}
+<div class="clc-settings" data-clc-settings>
+   <form method="post" action="{{ action }}">
+      <input type="hidden" name="itemtype" value="{{ itemtype }}">
+      <input type="hidden" name="items_id" value="{{ items_id }}">
+      <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+
+      {% if not global %}
+         <div class="alert alert-info d-flex align-items-center py-2 mb-3">
+            <i class="ti ti-arrow-merge me-2"></i>
+            <div>{{ __('Campos sem "Personalizar" herdam o valor %s. Ligue para sobrescrever só neste nível.', 'contractlifecycle')|format(origin) }}</div>
+         </div>
+      {% endif %}
+
+      <ul class="nav nav-tabs mb-3 clc-subtabs" role="tablist">
+         {% for key, tab in tabs %}
+            <li class="nav-item" role="presentation">
+               <button class="nav-link {{ loop.first ? 'active' }}" type="button" role="tab"
+                       data-clc-subtab="#clc-tab-{{ key }}-{{ rand }}">
+                  {{ tab.label }}
+                  {% set custom = tab.fields|filter(f => f.overridden)|length %}
+                  {% if not global and custom > 0 %}
+                     <span class="badge bg-blue-lt ms-1" title="{{ __('Campos personalizados', 'contractlifecycle') }}">{{ custom }}</span>
+                  {% endif %}
+               </button>
+            </li>
+         {% endfor %}
+      </ul>
+
+      <div class="clc-subpanes">
+         {% for key, tab in tabs %}
+            <div class="clc-subpane {{ loop.first ? 'is-active' }}" id="clc-tab-{{ key }}-{{ rand }}" role="tabpanel">
+               {% for field in tab.fields %}
+                  <div class="row align-items-start mb-3 clc-setting {{ field.overridden ? '' : 'clc-inherited' }}" data-clc-field>
+                     <label class="col-md-4 col-form-label text-md-end">
+                        {{ field.label }}
+                        {% if field.unit %}<small class="text-muted">({{ field.unit }})</small>{% endif %}
+                     </label>
+                     <div class="col-md-5">
+                        <div class="clc-input">{{ field.input|raw }}</div>
+                        <div class="clc-inherited-value form-control-plaintext text-muted">
+                           <i class="ti ti-arrow-back-up"></i> {{ field.inherited }}
+                        </div>
+                        {% if field.help %}<small class="form-hint">{{ field.help }}</small>{% endif %}
+                     </div>
+                     {% if not global %}
+                        <div class="col-md-3 pt-2">
+                           <label class="form-check form-switch mb-0">
+                              <input class="form-check-input" type="checkbox" name="override[{{ field.key }}]" value="1"
+                                     data-clc-override {{ field.overridden ? 'checked' }} {{ can_edit ? '' : 'disabled' }}>
+                              <span class="form-check-label">{{ __('Personalizar', 'contractlifecycle') }}</span>
+                           </label>
+                        </div>
+                     {% endif %}
+                  </div>
+               {% endfor %}
+            </div>
+         {% endfor %}
+      </div>
+
+      {% if can_edit %}
+         <div class="card-footer d-flex justify-content-end mx-n3 mb-n3 mt-3">
+            <button type="submit" name="save" class="btn btn-primary">
+               <i class="ti ti-device-floppy"></i> <span>{{ _x('button', 'Save') }}</span>
+            </button>
+         </div>
+      {% endif %}
+   </form>
+</div>

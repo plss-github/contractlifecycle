@@ -1,0 +1,125 @@
+{% set status_badges = {
+   'ok':       ['bg-green-lt', __('ok', 'contractlifecycle')],
+   'renamed':  ['bg-yellow-lt', __('reencontrado pelo nome — salve para fixar', 'contractlifecycle')],
+   'missing':  ['bg-red-lt', __('pergunta não encontrada', 'contractlifecycle')],
+   'unmapped': ['bg-secondary-lt', __('não mapeado', 'contractlifecycle')],
+} %}
+{% set run_badges = {'ok': 'bg-green-lt', 'partial': 'bg-yellow-lt', 'error': 'bg-red-lt', 'skipped': 'bg-secondary-lt'} %}
+
+<div class="clc-formaction">
+   <form method="post" action="{{ action_url }}">
+      <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="forms_id" value="{{ forms_id }}">
+
+      <div class="d-flex flex-wrap align-items-end gap-3 mb-3">
+         <div style="min-width: 22rem">
+            <label class="form-label">{{ __('Ao enviar este formulário', 'contractlifecycle') }}</label>
+            <select name="action_type" class="form-select" {{ can_edit ? '' : 'disabled' }}>
+               <option value="">{{ __('— nenhuma ação do ciclo de vida', 'contractlifecycle') }}</option>
+               {% for key, label in actions %}
+                  <option value="{{ key }}" {{ config.action == key ? 'selected' }}>{{ label }}</option>
+               {% endfor %}
+            </select>
+         </div>
+         <label class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" name="is_active" value="1" {{ config.is_active ? 'checked' }} {{ can_edit ? '' : 'disabled' }}>
+            <span class="form-check-label">{{ __('Ativa', 'contractlifecycle') }}</span>
+         </label>
+         {% if config.action %}
+            <div class="ms-auto d-flex gap-1 flex-wrap mb-2">
+               {% for status, n in summary|filter(n => n > 0) %}
+                  <span class="badge {{ status_badges[status][0] }}">{{ n }} {{ status_badges[status][1] }}</span>
+               {% endfor %}
+            </div>
+         {% endif %}
+      </div>
+
+      {% if config.action %}
+         <div class="alert alert-info py-2 small">
+            <i class="ti ti-link me-1"></i>
+            {{ __('Cada campo guarda a pergunta pelo identificador interno e pelo nome: se a pergunta for editada continua ligada; se for recriada ou o formulário vier de outro ambiente, é reencontrada pelo nome. Campo sem pergunta não impede o envio — o que não puder ser feito fica registrado no chamado.', 'contractlifecycle') }}
+         </div>
+
+         <ul class="nav nav-tabs mb-3 clc-subtabs" role="tablist">
+            {% for group, rows in groups %}
+               <li class="nav-item"><button class="nav-link {{ loop.first ? 'active' }}" type="button" data-clc-subtab="#clc-fa-{{ group }}-{{ rand }}">
+                  {{ group_labels[group] }}
+                  {% set bad = rows|filter(r => r.status == 'missing' or (r.required and r.status == 'unmapped'))|length %}
+                  {% if bad %}<span class="badge bg-red-lt ms-1">{{ bad }}</span>{% endif %}
+               </button></li>
+            {% endfor %}
+            {% if sections is not empty %}
+               <li class="nav-item"><button class="nav-link" type="button" data-clc-subtab="#clc-fa-sections-{{ rand }}">{{ group_labels['services'] }}</button></li>
+            {% endif %}
+            <li class="nav-item"><button class="nav-link" type="button" data-clc-subtab="#clc-fa-runs-{{ rand }}">
+               {{ __('Execuções', 'contractlifecycle') }} <span class="badge bg-secondary-lt ms-1">{{ runs|length }}</span></button></li>
+         </ul>
+
+         <div class="clc-subpanes">
+            {% for group, rows in groups %}
+               <div class="clc-subpane {{ loop.first ? 'is-active' }}" id="clc-fa-{{ group }}-{{ rand }}">
+                  {% for row in rows %}
+                     <div class="row align-items-center mb-2">
+                        <label class="col-md-4 col-form-label text-md-end">
+                           {{ row.label }}{% if row.required %} <span class="text-danger">*</span>{% endif %}
+                        </label>
+                        <div class="col-md-5">{{ row.input|raw }}</div>
+                        <div class="col-md-3 small">
+                           <span class="badge {{ row.status == 'unmapped' and row.required ? 'bg-red-lt' : status_badges[row.status][0] }}">{{ status_badges[row.status][1] }}</span>
+                           {% if row.status == 'missing' and row.was %}
+                              <div class="text-muted">{{ __('era: %s', 'contractlifecycle')|format((row.was.section ? row.was.section ~ ' › ' : '') ~ row.was.name) }}</div>
+                           {% endif %}
+                        </div>
+                     </div>
+                  {% endfor %}
+               </div>
+            {% endfor %}
+
+            {% if sections is not empty %}
+               <div class="clc-subpane" id="clc-fa-sections-{{ rand }}">
+                  <p class="text-muted small">{{ __('Em cada seção de serviços, a pergunta de caixas de seleção é a subárea (ex.: Banco de Dados) e cada opção marcada é o serviço (ex.: MySQL), procurado pelo nome dentro da área no catálogo modelo.', 'contractlifecycle') }}</p>
+                  <table class="table table-sm card-table">
+                     <thead><tr><th>{{ __('Seção do formulário', 'contractlifecycle') }}</th><th class="text-end">{{ __('Caixas de seleção', 'contractlifecycle') }}</th><th style="width: 40%">{{ __('Área do catálogo', 'contractlifecycle') }}</th></tr></thead>
+                     <tbody>
+                        {% for section in sections %}
+                           <tr><td>{{ section.name }}</td><td class="text-end text-muted">{{ section.count }}</td><td>{{ section.input|raw }}</td></tr>
+                        {% endfor %}
+                     </tbody>
+                  </table>
+               </div>
+            {% endif %}
+
+            <div class="clc-subpane" id="clc-fa-runs-{{ rand }}">
+               {% if runs is empty %}
+                  <div class="text-muted p-3">{{ __('Nenhum envio processado ainda.', 'contractlifecycle') }}</div>
+               {% else %}
+                  <table class="table table-sm card-table">
+                     <thead><tr><th>{{ __('Date') }}</th><th>{{ __('Chamado', 'contractlifecycle') }}</th><th>{{ __('Situação', 'contractlifecycle') }}</th><th>{{ __('Relatório', 'contractlifecycle') }}</th></tr></thead>
+                     <tbody>
+                        {% for run in runs %}
+                           <tr>
+                              <td class="text-nowrap">{{ run.date_creation|date('d/m/Y H:i') }}</td>
+                              <td>{% if run.tickets_id %}<a href="{{ ticket_url }}?id={{ run.tickets_id }}">#{{ run.tickets_id }}</a>{% else %}—{% endif %}</td>
+                              <td><span class="badge {{ run_badges[run.status]|default('bg-secondary-lt') }}">{{ run.status }}</span></td>
+                              <td><details><summary class="small">{{ run.report|split("\n")|first }}</summary><pre class="small mb-0 mt-1" style="white-space: pre-wrap">{{ run.report }}</pre></details></td>
+                           </tr>
+                        {% endfor %}
+                     </tbody>
+                  </table>
+               {% endif %}
+            </div>
+         </div>
+      {% endif %}
+
+      {% if can_edit %}
+         <div class="card-footer d-flex justify-content-end gap-2 mx-n3 mb-n3 mt-3">
+            {% if config.action %}
+               <button type="submit" name="automap" class="btn btn-outline-secondary" title="{{ __('Preenche os campos sem pergunta e corrige os reencontrados pelo nome', 'contractlifecycle') }}">
+                  <i class="ti ti-wand"></i> {{ __('Mapear automaticamente pelos nomes', 'contractlifecycle') }}
+               </button>
+            {% endif %}
+            <button type="submit" name="save" class="btn btn-primary"><i class="ti ti-device-floppy"></i> {{ _x('button', 'Save') }}</button>
+         </div>
+      {% endif %}
+   </form>
+</div>

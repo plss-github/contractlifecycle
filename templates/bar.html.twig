@@ -1,0 +1,59 @@
+{% set colors = {'ok': 'bg-green', 'warning': 'bg-yellow', 'over': 'bg-red', 'expired': 'bg-secondary', 'pending': 'bg-secondary'} %}
+
+<div class="clc-bar clc-bar-{{ context }} card mb-3" {% if context == 'ticket' %}data-clc-ticket-bar{% endif %}>
+   <div class="card-body py-2 px-3">
+      {% if bar %}
+         <div class="clc-bar-head d-flex align-items-center flex-wrap gap-2 mb-1">
+            <i class="ti ti-file-certificate text-muted"></i>
+            {% if context == 'ticket' %}
+               <a href="{{ bar.url }}" class="fw-bold">{{ bar.name }}</a>
+            {% else %}
+               <span class="fw-bold">{{ __('Uso do contrato', 'contractlifecycle') }}</span>
+            {% endif %}
+            {% if bar.type %}<span class="badge bg-blue-lt">{{ bar.type }}</span>{% endif %}
+            {% if bar.renewal %}<span class="badge bg-teal-lt" title="{{ __('Renovação automática', 'contractlifecycle') }}"><i class="ti ti-refresh"></i></span>{% endif %}
+            <span class="ms-auto small">{{ bar.label }}</span>
+         </div>
+         {% if bar.percent is not null %}
+            <div class="progress progress-sm" role="progressbar" aria-valuenow="{{ bar.percent }}" aria-valuemin="0" aria-valuemax="100">
+               <div class="progress-bar {{ colors[bar.status] }}" style="width: {{ bar.percent }}%"></div>
+            </div>
+         {% endif %}
+         <div class="clc-bar-foot d-flex flex-wrap gap-3 mt-1 small text-muted">
+            <span>
+               {% if bar.end %}
+                  {{ bar.status == 'expired' ? __('Vigência encerrada em %s', 'contractlifecycle')|format(bar.end) : __('Vigência até %s', 'contractlifecycle')|format(bar.end) }}
+               {% else %}
+                  {{ __('Vigência sem data final', 'contractlifecycle') }}
+               {% endif %}
+            </span>
+            {% if bar.over %}<span class="text-danger"><i class="ti ti-alert-triangle"></i> {{ __('Franquia excedida em %s: sugerir recarga ao cliente', 'contractlifecycle')|format(bar.over) }}</span>{% endif %}
+            {% if bar.billing %}<span>{{ __('Faturado no contrato: %s', 'contractlifecycle')|format(bar.amount) }}</span>{% endif %}
+            {% if context == 'ticket' %}
+               <span class="ms-auto">{{ __('Neste chamado: %1$s gastas, %2$s debitadas', 'contractlifecycle')|format(ticket.spent, ticket.debited) }}{% if bar.billing %} · {{ ticket.amount }}{% endif %}</span>
+            {% endif %}
+         </div>
+      {% elseif context == 'ticket' %}
+         {% if state.status == 'pending' %}
+            <div class="text-warning"><i class="ti ti-hourglass"></i> {{ __('Sem contrato: aguardando a aprovação Per-Event do ponto focal para liberar o atendimento.', 'contractlifecycle') }}</div>
+         {% elseif state.status == 'refused' %}
+            <div class="text-danger"><i class="ti ti-ban"></i> {{ __('Aprovação Per-Event recusada: chamado sem cobertura contratual.', 'contractlifecycle') }}</div>
+         {% else %}
+            <div class="text-muted small"><i class="ti ti-file-off"></i> {{ __('Nenhum contrato vigente cobre o serviço deste chamado.', 'contractlifecycle') }}</div>
+         {% endif %}
+      {% endif %}
+
+      {% if context == 'ticket' and state.needs_realloc %}
+         {# sem <form>: a barra nasce dentro do formulário do chamado (form aninhado é descartado pelo navegador) #}
+         <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
+            <span class="small text-warning"><i class="ti ti-arrows-exchange"></i> {{ __('A categoria ou a entidade mudou depois de haver horas lançadas.', 'contractlifecycle') }}</span>
+            {% if can_realloc %}
+               <button type="button" class="btn btn-sm btn-warning" data-clc-post="{{ action }}"
+                       data-clc-fields="{{ {'realloc': 1, 'tickets_id': ticket.id, '_glpi_csrf_token': csrf_token()}|json_encode }}">
+                  <i class="ti ti-arrows-exchange"></i> {{ __('Re-alocar horas', 'contractlifecycle') }}
+               </button>
+            {% endif %}
+         </div>
+      {% endif %}
+   </div>
+</div>

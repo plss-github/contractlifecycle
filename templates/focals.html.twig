@@ -1,0 +1,39 @@
+<div class="clc-focals">
+   <form method="post" action="{{ action }}">
+      <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="entities_id" value="{{ entities_id }}">
+
+      <div class="alert alert-info py-2">
+         <i class="ti ti-info-circle me-1"></i>
+         {{ __('Recebem os avisos de renovação e as aprovações Per-Event conforme a configuração geral. Sem ninguém aqui, vale o ponto focal da entidade pai.', 'contractlifecycle') }}
+      </div>
+
+      <ul class="nav nav-tabs mb-3 clc-subtabs" role="tablist">
+         {% for key, role in roles %}
+            <li class="nav-item">
+               <button class="nav-link {{ loop.first ? 'active' }}" type="button" data-clc-subtab="#clc-focal-{{ key }}-{{ rand }}">
+                  {{ role.label }} <span class="badge bg-secondary-lt ms-1">{{ role.count }}</span>
+               </button>
+            </li>
+         {% endfor %}
+      </ul>
+      <div class="clc-subpanes">
+         {% for key, role in roles %}
+            <div class="clc-subpane {{ loop.first ? 'is-active' }}" id="clc-focal-{{ key }}-{{ rand }}">
+               <div class="row mb-3">
+                  <label class="col-md-3 col-form-label text-md-end">{{ __('Usuários', 'contractlifecycle') }}</label>
+                  <div class="col-md-7">{{ role.input|raw }}</div>
+               </div>
+            </div>
+         {% endfor %}
+      </div>
+
+      {% if can_edit %}
+         <div class="card-footer d-flex justify-content-end mx-n3 mb-n3 mt-3">
+            <button type="submit" name="save" class="btn btn-primary">
+               <i class="ti ti-device-floppy"></i> <span>{{ _x('button', 'Save') }}</span>
+            </button>
+         </div>
+      {% endif %}
+   </form>
+</div>

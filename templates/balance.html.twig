@@ -1,0 +1,109 @@
+{% set rand = random() %}
+{% set entity_mode = entity_mode|default(false) %}
+<div class="{{ entity_mode ? '' : 'card' }} clc-balance {{ entity_mode ? 'clc-hide-inactive' }}" data-clc-balance>
+   <div class="{{ entity_mode ? 'd-flex mb-3' : 'card-header d-flex' }} flex-wrap gap-2 align-items-center">
+      {% if not entity_mode %}
+         <h3 class="card-title mb-0"><i class="ti ti-scale me-2"></i>{{ __('Saldos de contratos', 'contractlifecycle') }}</h3>
+      {% endif %}
+      <div class="{{ entity_mode ? '' : 'ms-auto' }} d-flex gap-2 align-items-center flex-wrap">
+         <input type="search" class="form-control form-control-sm" style="width: 16rem" data-clc-filter=".clc-balance table"
+                placeholder="{{ __('Filtrar por contrato ou entidade...', 'contractlifecycle') }}">
+         {% if entity_mode %}
+            <label class="form-check form-switch mb-0">
+               <input class="form-check-input" type="checkbox" data-clc-toggle-inactive>
+               <span class="form-check-label">{{ __('Mostrar encerrados', 'contractlifecycle') }}</span>
+            </label>
+         {% else %}
+            <a class="btn btn-sm {{ only_active ? 'btn-outline-secondary' : 'btn-secondary' }}" href="{{ self_url }}?all={{ only_active ? 1 : 0 }}">
+               <i class="ti {{ only_active ? 'ti-eye' : 'ti-eye-off' }}"></i>
+               {{ only_active ? __('Incluir encerrados', 'contractlifecycle') : __('Só vigentes', 'contractlifecycle') }}
+            </a>
+         {% endif %}
+      </div>
+      {% if entity_mode %}
+         <a class="btn btn-sm btn-outline-primary ms-auto" href="{{ add_url }}"><i class="ti ti-plus"></i> {{ __('Novo contrato', 'contractlifecycle') }}</a>
+      {% endif %}
+   </div>
+   <div class="{{ entity_mode ? '' : 'card-body' }}">
+      <ul class="nav nav-tabs mb-3 clc-subtabs" role="tablist">
+         {% for key, rows in groups %}
+            <li class="nav-item">
+               <button class="nav-link {{ key == first ? 'active' }}" type="button" data-clc-subtab="#clc-bal-{{ key }}-{{ rand }}">
+                  {{ labels[key] }}
+                  {% if entity_mode %}
+                     <span class="badge bg-secondary-lt ms-1" title="{{ __('vigentes / total', 'contractlifecycle') }}">{{ rows|filter(r => r.active)|length }}/{{ rows|length }}</span>
+                  {% else %}
+                     <span class="badge bg-secondary-lt ms-1">{{ rows|length }}</span>
+                  {% endif %}
+               </button>
+            </li>
+         {% endfor %}
+      </ul>
+      <div class="clc-subpanes">
+         {% for key, rows in groups %}
+            <div class="clc-subpane {{ key == first ? 'is-active' }}" id="clc-bal-{{ key }}-{{ rand }}">
+               {% if rows is empty %}
+                  <div class="text-muted p-3">{{ __('Nenhum contrato neste grupo.', 'contractlifecycle') }}</div>
+               {% else %}
+                  <div class="table-responsive">
+                     <table class="table table-hover table-sm card-table">
+                        <thead><tr>
+                           <th>{{ __('Contrato', 'contractlifecycle') }}</th>
+                           <th>{{ _n('Entity', 'Entities', 1) }}</th>
+                           <th>{{ _n('Type', 'Types', 1) }}</th>
+                           <th>{{ __('Vigência', 'contractlifecycle') }}</th>
+                           {% if key == 'limited' %}
+                              <th class="text-end">{{ __('Entradas', 'contractlifecycle') }}</th>
+                              <th class="text-end">{{ __('Usado', 'contractlifecycle') }}</th>
+                              <th style="min-width: 8rem">{{ __('Uso', 'contractlifecycle') }}</th>
+                              <th class="text-end">{{ __('Saldo', 'contractlifecycle') }}</th>
+                           {% else %}
+                              <th class="text-end">{{ __('Tempo gasto', 'contractlifecycle') }}</th>
+                              <th class="text-end">{{ __('Debitado', 'contractlifecycle') }}</th>
+                              <th class="text-end">{{ __('Diferença', 'contractlifecycle') }}</th>
+                              {% if key == 'billing' %}<th class="text-end">{{ __('Valor', 'contractlifecycle') }}</th>{% endif %}
+                           {% endif %}
+                        </tr></thead>
+                        <tbody>
+                           {% for row in rows %}
+                              <tr class="{{ row.active ? '' : 'text-muted clc-inactive' }}">
+                                 <td><a href="{{ row.url }}">{{ row.name }}</a>
+                                    {% if row.renewal %}<i class="ti ti-refresh text-teal ms-1" title="{{ __('Renovação automática', 'contractlifecycle') }}"></i>{% endif %}
+                                    {% if not row.active %}<span class="badge bg-secondary-lt ms-1">{{ __('encerrado', 'contractlifecycle') }}</span>{% endif %}
+                                    {% if row.inherited|default(false) %}<span class="badge bg-azure-lt ms-1" title="{{ __('Contrato recursivo de uma entidade acima', 'contractlifecycle') }}">{{ __('herdado', 'contractlifecycle') }}</span>{% endif %}
+                                 </td>
+                                 <td class="small">{{ row.entity }}</td>
+                                 <td class="small">{{ row.type }}</td>
+                                 <td class="small text-nowrap">{{ row.begin }} → {{ row.end }}</td>
+                                 {% if key == 'limited' %}
+                                    <td class="text-end">{{ row.credits }}</td>
+                                    <td class="text-end">{{ row.used }}</td>
+                                    <td>
+                                       {% if row.percent is not null %}
+                                          <div class="d-flex align-items-center gap-2">
+                                             <div class="progress progress-sm flex-grow-1">
+                                                <div class="progress-bar {{ row.percent >= 100 ? 'bg-red' : (row.percent >= 80 ? 'bg-yellow' : 'bg-green') }}"
+                                                     style="width: {{ min(row.percent, 100) }}%"></div>
+                                             </div>
+                                             <span class="small text-muted">{{ row.percent }}%</span>
+                                          </div>
+                                       {% else %}<span class="text-muted small">{{ __('sem franquia', 'contractlifecycle') }}</span>{% endif %}
+                                    </td>
+                                    <td class="text-end fw-bold {{ row.balance_raw < 0 ? 'text-danger' }}">{{ row.balance }}</td>
+                                 {% else %}
+                                    <td class="text-end">{{ row.spent }}</td>
+                                    <td class="text-end">{{ row.used }}</td>
+                                    <td class="text-end text-muted">{{ row.diff }}</td>
+                                    {% if key == 'billing' %}<td class="text-end">{{ row.amount }}</td>{% endif %}
+                                 {% endif %}
+                              </tr>
+                           {% endfor %}
+                        </tbody>
+                     </table>
+                  </div>
+               {% endif %}
+            </div>
+         {% endfor %}
+      </div>
+   </div>
+</div>

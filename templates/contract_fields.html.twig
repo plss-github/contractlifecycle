@@ -1,0 +1,21 @@
+{% import 'components/form/fields_macros.html.twig' as fields %}
+
+{{ fields.largeTitle(__('Ciclo de vida', 'contractlifecycle'), 'ti ti-file-certificate') }}
+
+{{ fields.dateField('_clc[end_date]', data.end_date, __('Data final', 'contractlifecycle'), {
+   'helper': computed ? __('Vazio = %s (data inicial + duração)', 'contractlifecycle')|format(computed) : __('Vazio = data inicial + duração', 'contractlifecycle'),
+}) }}
+
+{% if limited %}
+   {{ fields.numberField('_clc[franchise_hours]', data.franchise_hours, __('Franquia contratada (horas)', 'contractlifecycle'), {
+      'min': 0, 'step': '0.01',
+      'helper': __('Alterar a franquia lança a diferença no extrato. Recargas e ajustes ficam na aba Extrato.', 'contractlifecycle'),
+   }) }}
+{% endif %}
+
+{% if billing %}
+   {% set rate_html %}{{ rate_input|raw }}{% endset %}
+   {{ fields.field('_clc[plugin_contractlifecycle_rates_id]', rate_html, __('Tabela Per-Event (versão)', 'contractlifecycle'), {
+      'helper': __('Vazio = versão vigente no primeiro apontamento.', 'contractlifecycle'),
+   }) }}
+{% endif %}

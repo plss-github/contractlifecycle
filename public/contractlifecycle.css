@@ -1,0 +1,25 @@
+.clc-settings .clc-inherited .clc-input { display: none; }
+.clc-settings .clc-setting:not(.clc-inherited) .clc-inherited-value { display: none; }
+.clc-settings .clc-inherited-value { padding-top: .45rem; }
+.clc-bar .progress { height: .5rem; }
+.clc-ledger-table td.clc-obs { max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clc-ledger-table tr.clc-reversed td { text-decoration: line-through; text-decoration-color: rgba(0,0,0,.25); }
+.clc-totals .card-body .h3 { font-variant-numeric: tabular-nums; }
+.clc-bar-ticket { width: 100%; }
+.clc-bar-ticket .clc-bar-head .ms-auto { flex-basis: 100%; margin-left: 0 !important; }
+.clc-bar-ticket .clc-bar-foot { flex-direction: column; gap: .15rem !important; }
+.clc-bar-ticket .clc-bar-foot .ms-auto { margin-left: 0 !important; }
+.clc-subpanes > .clc-subpane { display: none; }
+.clc-subpanes > .clc-subpane.is-active { display: block; }
+.clc-hide-inactive tr.clc-inactive { display: none; }
+.clc-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .35rem; }
+.clc-cal-head { font-size: .75rem; font-weight: 600; text-transform: uppercase; color: var(--tblr-secondary, #667382); text-align: center; }
+.clc-cal-cell { display: flex; flex-direction: column; align-items: flex-start; gap: .1rem; min-height: 5.5rem; padding: .35rem .45rem;
+   border: 1px solid var(--tblr-border-color, #e6e7e9); border-radius: .35rem; background: var(--tblr-bg-surface, #fff); text-align: left; font-size: .75rem; }
+.clc-cal-empty { border: 0; background: transparent; }
+.clc-cal-weekend, .clc-cal-holiday { background: var(--tblr-bg-surface-secondary, #f6f8fb); }
+.clc-cal-has { border-color: var(--tblr-primary, #206bc4); cursor: pointer; }
+.clc-cal-today .clc-cal-num { color: var(--tblr-primary, #206bc4); font-weight: 700; }
+.clc-cal-selected { box-shadow: 0 0 0 2px var(--tblr-primary, #206bc4); }
+.clc-cal-num { font-weight: 600; font-size: .8rem; }
+.clc-cal-line { line-height: 1.2; }
