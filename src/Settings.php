@@ -201,6 +201,10 @@ class Settings extends CommonDBTM
                     'earliest_end'    => __('O que vence primeiro', 'contractlifecycle'),
                 ],
             ],
+            'skip_entity_default_contract' => [
+                'tab' => 'tickets', 'scope' => 'global', 'type' => 'bool', 'default' => 1,
+                'label' => __('Ignorar o contrato padrão da entidade na abertura do chamado (o vínculo vem dos serviços do contrato)', 'contractlifecycle'),
+            ],
             'show_ticket_bar' => [
                 'tab' => 'tickets', 'scope' => 'global', 'type' => 'bool', 'default' => 1,
                 'label' => __('Mostrar a barra do contrato no chamado', 'contractlifecycle'),

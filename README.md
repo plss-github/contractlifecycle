@@ -14,6 +14,9 @@ horário, saldos, Per-Event com aprovação e avisos de renovação.
   ID exato da categoria, ou pela raiz da categoria quando o tipo define "cobre toda categoria cuja raiz se chama"
   (ex.: Per-Event → `IT Support`). Vários contratos: estratégia global (padrão: ilimitado → limitado → o que vence
   primeiro). O vínculo usa a tabela do core (aba *Contratos* do chamado).
+  O "contrato padrão" da entidade (core) é ignorado na abertura do chamado — configurável em *Configuração
+  geral → Chamados*; contrato escolhido no formulário ou por regra de negócio continua valendo. Vínculo repetido
+  (ex.: regra que atribui um contrato já vinculado) é descartado em vez de derrubar a gravação do chamado.
 - **Extrato**: toda entrada (criação, recarga, ajuste, renovação) e saída (apontamento) de horas. Nada é apagado:
   tarefa alterada/excluída gera estorno + novo débito. Saldo pode ficar negativo; recarga abate o negativo.
 - **Cobrança mínima**: debitado = max(tempo real, mínimo da faixa). Faixas: horário comercial, fora do horário,
@@ -70,6 +73,7 @@ No laboratório (`docker compose`, ver o repositório do lab):
 ```
 make test   # tests/lab/run.php (regras e cenários, entidade LABTEST) e tests/lab/forms.php (envios reais dos
             # formulários do QA: Onboard, Recarga, Renovação, Não renovação/Cancelamento; desfaz tudo no fim)
+            # tests/lab/links.php: vínculo chamado ↔ contrato e serviços (roda também num GLPI vazio)
 make demo   # tests/lab/demo.php: dados LABDEMO na Pamplona para ver as telas
 ```
 

@@ -133,7 +133,16 @@ class Service extends CommonDBTM
         global $DB;
 
         if (isset($post['add'])) {
-            $ids = array_map('intval', (array) ($post['itilcategories_id'] ?? []));
+            // O select múltiplo do GLPI envia um itilcategories_id="" oculto (para postar "nada selecionado"):
+            // sem o filtro ele vira a categoria 0, e os "filhos" da 0 são o catálogo inteiro.
+            $ids = array_values(array_filter(
+                array_map('intval', (array) ($post['itilcategories_id'] ?? [])),
+                static fn (int $cat) => $cat > 0
+            ));
+            if ($ids === []) {
+                Session::addMessageAfterRedirect(__('Selecione ao menos uma categoria.', 'contractlifecycle'), false, WARNING);
+                return;
+            }
             if (!empty($post['with_children'])) {
                 foreach ($ids as $cat) {
                     $ids = array_merge($ids, array_map('intval', array_keys(getSonsOf(ITILCategory::getTable(), $cat))));

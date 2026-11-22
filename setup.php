@@ -22,7 +22,7 @@ use GlpiPlugin\Contractlifecycle\Service;
 use GlpiPlugin\Contractlifecycle\Settings;
 use GlpiPlugin\Contractlifecycle\TicketState;
 
-define('PLUGIN_CONTRACTLIFECYCLE_VERSION', '1.1.0');
+define('PLUGIN_CONTRACTLIFECYCLE_VERSION', '1.1.1');
 define('PLUGIN_CONTRACTLIFECYCLE_MIN_GLPI', '11.0.0'); // inclusivo
 define('PLUGIN_CONTRACTLIFECYCLE_MAX_GLPI', '12.1.0'); // exclusivo: aceita 11.0.x até 12.0.x
 
@@ -52,7 +52,9 @@ function plugin_init_contractlifecycle()
         TicketValidation::class => [Approval::class, 'validationUpdated'],
     ];
     $PLUGIN_HOOKS[Hooks::PRE_ITEM_ADD]['contractlifecycle'] = [
-        TicketTask::class => [Approval::class, 'preTaskAdd'],
+        TicketTask::class      => [Approval::class, 'preTaskAdd'],
+        Ticket::class          => [TicketState::class, 'preTicketAdd'],
+        Ticket_Contract::class => [TicketState::class, 'preLinkAdd'],
     ];
     $PLUGIN_HOOKS[Hooks::PRE_ITEM_UPDATE]['contractlifecycle'] = [
         Contract::class => [ContractData::class, 'contractPreUpdate'],

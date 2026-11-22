@@ -123,6 +123,38 @@ class TicketState extends CommonDBTM
 
     // ------------------------------------------------------------------ hooks
 
+    /**
+     * Antes de criar o chamado: o core aplica o "contrato padrão" da entidade quando nenhum contrato foi
+     * informado (com "Contrato na entidade do chamado", o primeiro contrato vigente da entidade, mesmo sem
+     * nenhum serviço). Quem vincula pelo serviço é o plugin, então esse padrão é desligado (configurável).
+     * Contrato escolhido no formulário ou por regra de negócio continua valendo.
+     */
+    public static function preTicketAdd(Ticket $ticket): void
+    {
+        if (is_array($ticket->input) && !empty(Settings::global()['skip_entity_default_contract'])) {
+            $ticket->input['_skip_default_contract'] = true;
+        }
+    }
+
+    /**
+     * Antes de gravar um vínculo chamado ↔ contrato: o core (Ticket::handleContractInputs, chamado também na
+     * atualização quando uma regra de negócio "atribuir contrato" dispara) insere sem conferir se o par já
+     * existe, e a chave única da tabela derruba a gravação inteira do chamado com erro SQL. Par repetido é
+     * descartado em silêncio.
+     */
+    public static function preLinkAdd(Ticket_Contract $link): void
+    {
+        if (!is_array($link->input)) {
+            return;
+        }
+        $tickets_id = (int) ($link->input['tickets_id'] ?? 0);
+        $contracts_id = (int) ($link->input['contracts_id'] ?? 0);
+        if ($tickets_id > 0 && $contracts_id > 0
+            && countElementsInTable(Ticket_Contract::getTable(), ['tickets_id' => $tickets_id, 'contracts_id' => $contracts_id]) > 0) {
+            $link->input = false;
+        }
+    }
+
     public static function ticketAdded(Ticket $ticket): void
     {
         if ($ticket->getFromDB($ticket->getID())) {
