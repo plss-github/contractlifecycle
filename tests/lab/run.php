@@ -94,7 +94,8 @@ function h(int $s): string
 // ------------------------------------------------------------------------------------------------
 section('Calculadora: faixas e cobrança mínima (Banco de Horas: 15 / 60 / 60)');
 
-$base = array_merge(Settings::forType(2), ['calendars_id' => 1, 'use_holidays' => 1]);
+// modo "só cobrança mínima" fixado aqui: os casos abaixo testam faixas; o arredondamento tem seção própria
+$base = array_merge(Settings::forType(2), ['calendars_id' => 1, 'use_holidays' => 1, 'rounding_mode' => 'minimum']);
 $c = new Calculator($base, 3);
 $r = $c->compute('2026-11-18 10:00:00', 5 * 60);           // quarta, comercial
 check('5 min às 10h de quarta → comercial, debita 15 min', $r['band'] === 'business' && $r['debited'] === 900, json_encode($r));
@@ -110,6 +111,27 @@ $r = $c->compute('2026-11-20 10:00:00', 20 * 60);           // feriado Consciên
 check('feriado (20/11, calendário 1) → fim de semana', $r['band'] === 'weekend', $r['band']);
 $r = $c->compute('2026-11-18 10:00:00', 90 * 60);
 check('1h30 no comercial → debita 1h30', $r['debited'] === 5400);
+
+section('Calculadora: modos de arredondamento (bloco 15 min no comercial, 60 min fora)');
+foreach ([
+    // [modo, início, minutos reais, minutos debitados]
+    ['up', '2026-11-18 10:00:00', 12, 15],
+    ['up', '2026-11-18 10:00:00', 73, 75],     // 1h13 → 1h15
+    ['up', '2026-11-18 10:00:00', 16, 30],
+    ['up', '2026-11-18 10:00:00', 15, 15],     // múltiplo exato não sobe
+    ['up', '2026-11-18 10:00:00', 0, 15],      // 0 min → um bloco
+    ['up', '2026-11-18 19:00:00', 61, 120],    // fora do horário: bloco de 1h
+    ['minimum', '2026-11-18 10:00:00', 12, 15],
+    ['minimum', '2026-11-18 10:00:00', 73, 73],
+    ['none', '2026-11-18 10:00:00', 12, 12],
+    ['none', '2026-11-18 19:00:00', 61, 61],
+] as [$mode, $start, $real, $expected]) {
+    $r = (new Calculator(array_merge($base, ['rounding_mode' => $mode]), 3))->compute($start, $real * 60);
+    check("$mode: " . h($real * 60) . ' às ' . substr($start, 11, 5) . ' → ' . h($expected * 60), $r['debited'] === $expected * 60, h($r['debited']));
+}
+check('padrão da configuração geral = sempre para cima', Settings::global()['rounding_mode'] === 'up', (string) Settings::global()['rounding_mode']);
+$r = (new Calculator(array_merge($base, ['rounding_mode' => 'up', 'min_business' => 0]), 3))->compute('2026-11-18 10:00:00', 7 * 60);
+check('para cima com bloco 0 → tempo real', $r['debited'] === 420, h($r['debited']));
 
 section('Calculadora: apontamento cruzando 18h (17h50 → 18h05, 15 min)');
 foreach ([
@@ -134,7 +156,7 @@ foreach ([['start', 'offhours'], ['end', 'weekend']] as [$rule, $band]) {
 
 section('Calculadora: cobrança em valor (R$ 100/h; ×1 / ×1,5 / ×2; mínimo 1h)');
 $rate = ['hourly_value' => 100, 'mult_business' => 1, 'mult_offhours' => 1.5, 'mult_weekend' => 2];
-$pe = array_merge(Settings::forType(3), ['calendars_id' => 1, 'use_holidays' => 1]);
+$pe = array_merge(Settings::forType(3), ['calendars_id' => 1, 'use_holidays' => 1, 'rounding_mode' => 'minimum']);
 $calc = new Calculator($pe, 3);
 $r = $calc->compute('2026-11-18 10:00:00', 30 * 60, $rate);
 check('30 min comercial → 1h × R$100 = R$100', $r['debited'] === 3600 && abs($r['amount'] - 100) < 0.01, json_encode($r));
@@ -201,9 +223,10 @@ check('custo lançado no chamado com o tempo debitado', $cost->getFromDBByCrit([
 
 $task->update(['id' => $task_id, 'actiontime' => 2400]);
 $t = Ledger::totals($horas);
-check('tarefa alterada para 40 min → estorno + novo débito de 40 min', $t['debited'] === 2400 && $t['spent'] === 2400, json_encode($t));
+// arredondamento padrão = para cima em blocos de 15 min: 40 min reais → 45 min debitados
+check('tarefa alterada para 40 min → estorno + novo débito de 45 min (para cima)', $t['debited'] === 2700 && $t['spent'] === 2400, json_encode($t));
 $cost->getFromDB($cost->getID());
-check('custo atualizado (não duplicado)', (int) $cost->fields['actiontime'] === 2400 && countElementsInTable('glpi_ticketcosts', ['tickets_id' => $tid]) === 1);
+check('custo atualizado (não duplicado)', (int) $cost->fields['actiontime'] === 2700 && countElementsInTable('glpi_ticketcosts', ['tickets_id' => $tid]) === 1);
 $rows = Ledger::statement($horas, false);
 check('extrato sem estornos mostra criação + 1 débito', count($rows) === 2, (string) count($rows));
 check('extrato com estornos mostra criação + débito estornado + estorno + débito', count(Ledger::statement($horas, true)) === 4);
@@ -211,10 +234,10 @@ check('extrato com estornos mostra criação + débito estornado + estorno + dé
 $task2 = new TicketTask();
 $task2_id = (int) $task2->add(['tickets_id' => $tid, 'content' => 'Plantão', 'actiontime' => 1200, 'date' => '2026-11-21 10:00:00']);
 $t = Ledger::totals($horas);
-check('tarefa de sábado (20 min) debita 1h', $t['debited'] === 2400 + 3600, json_encode($t));
+check('tarefa de sábado (20 min) debita 1h', $t['debited'] === 2700 + 3600, json_encode($t));
 $task2->delete(['id' => $task2_id], true);
 $t = Ledger::totals($horas);
-check('tarefa excluída → estorno, saldo volta', $t['debited'] === 2400 && $t['balance'] === 36000 - 2400, json_encode($t));
+check('tarefa excluída → estorno, saldo volta', $t['debited'] === 2700 && $t['balance'] === 36000 - 2700, json_encode($t));
 check('custo da tarefa excluída removido', countElementsInTable('glpi_ticketcosts', ['tickets_id' => $tid]) === 1);
 
 section('Saldo negativo e recarga (150h usadas de 100h, recarga de 200h → saldo 150h)');
@@ -273,7 +296,7 @@ TicketState::realloc($tid);
 $s = TicketState::get($tid);
 check('re-alocar: chamado vai para o contrato de gestão', (int) $s['contracts_id'] === $gestao && (int) $s['needs_realloc'] === 0, json_encode($s));
 check('re-alocar: horas saem do banco de horas', Ledger::totals($horas)['debited'] === 0, json_encode(Ledger::totals($horas)));
-check('re-alocar: horas entram na gestão (40 min)', Ledger::totals($gestao)['debited'] === 2400, json_encode(Ledger::totals($gestao)));
+check('re-alocar: horas entram na gestão (40 min → 45 min)', Ledger::totals($gestao)['debited'] === 2700, json_encode(Ledger::totals($gestao)));
 
 section('Per-Event: aprovação do ponto focal, bloqueio e criação do contrato');
 $DB->delete(Focal::getTable(), ['entities_id' => ENTITY]);

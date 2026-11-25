@@ -148,17 +148,27 @@ class Settings extends CommonDBTM
                 'tab' => 'timing', 'type' => 'bool', 'default' => 1,
                 'label' => __('Lançar o tempo debitado em Custos do chamado', 'contractlifecycle'),
             ],
+            'rounding_mode' => [
+                'tab' => 'timing', 'type' => 'select', 'default' => 'up',
+                'label' => __('Arredondamento do tempo', 'contractlifecycle'),
+                'options' => [
+                    'up'      => __('Sempre para cima, em blocos do tempo da faixa', 'contractlifecycle'),
+                    'minimum' => __('Só cobrança mínima (acima do mínimo, tempo real)', 'contractlifecycle'),
+                    'none'    => __('Sem arredondamento (tempo real)', 'contractlifecycle'),
+                ],
+                'help' => __('Ex. com 15 min: para cima → 0h12 = 0h15, 1h13 = 1h15, 0h16 = 0h30; só mínimo → 0h12 = 0h15, 1h13 = 1h13.', 'contractlifecycle'),
+            ],
             'min_business' => [
                 'tab' => 'timing', 'type' => 'int', 'default' => 15, 'unit' => 'min',
-                'label' => __('Cobrança mínima no horário comercial', 'contractlifecycle'),
+                'label' => __('Bloco / cobrança mínima no horário comercial', 'contractlifecycle'),
             ],
             'min_offhours' => [
                 'tab' => 'timing', 'type' => 'int', 'default' => 60, 'unit' => 'min',
-                'label' => __('Cobrança mínima fora do horário comercial', 'contractlifecycle'),
+                'label' => __('Bloco / cobrança mínima fora do horário comercial', 'contractlifecycle'),
             ],
             'min_weekend' => [
                 'tab' => 'timing', 'type' => 'int', 'default' => 60, 'unit' => 'min',
-                'label' => __('Cobrança mínima em fins de semana e feriados', 'contractlifecycle'),
+                'label' => __('Bloco / cobrança mínima em fins de semana e feriados', 'contractlifecycle'),
             ],
             'boundary_rule' => [
                 'tab' => 'timing', 'type' => 'select', 'default' => 'start',
@@ -172,7 +182,7 @@ class Settings extends CommonDBTM
             ],
             'rounding' => [
                 'tab' => 'timing', 'type' => 'bool', 'default' => 0,
-                'label' => __('Arredondar para a faixa de maior cobrança', 'contractlifecycle'),
+                'label' => __('Apontamento que cruza faixas: cobrar pela faixa mais cara', 'contractlifecycle'),
                 'help' => __('Ligado: entre as faixas cruzadas vale a que cobra mais; empate segue a regra acima.', 'contractlifecycle'),
             ],
 

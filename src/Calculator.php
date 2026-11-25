@@ -11,7 +11,11 @@ use Entity;
  * Calcula quanto um apontamento debita.
  *
  * Faixas: comercial (dias úteis dentro do horário), fora do horário (dias úteis fora dele) e
- * fim de semana/feriado. Cada faixa tem uma cobrança mínima: debitado = max(tempo real, mínimo da faixa).
+ * fim de semana/feriado. Cada faixa tem um mínimo (em minutos), usado conforme rounding_mode:
+ *  - none:    debitado = tempo real;
+ *  - minimum: debitado = max(tempo real, mínimo da faixa);
+ *  - up:      debitado = tempo real arredondado para cima em blocos do mínimo da faixa (bloco de 15 min:
+ *             0h12 → 0h15, 1h13 → 1h15, 0h16 → 0h30); apontamento de 0 min debita um bloco.
  *
  * Apontamento que cruza faixas:
  *  - boundary_rule escolhe a faixa (início | fim | comercial | não comercial);
@@ -88,6 +92,22 @@ class Calculator
         return max(0, (int) $minutes) * 60;
     }
 
+    public const ROUNDING_NONE    = 'none';
+    public const ROUNDING_MINIMUM = 'minimum';
+    public const ROUNDING_UP      = 'up';
+
+    /** Tempo debitado na faixa, conforme o modo de arredondamento. */
+    public function debitedSeconds(string $band, int $seconds): int
+    {
+        $seconds = max(0, $seconds);
+        $block = $this->minimumSeconds($band);
+        return match ($this->settings['rounding_mode'] ?? self::ROUNDING_MINIMUM) {
+            self::ROUNDING_NONE => $seconds,
+            self::ROUNDING_UP   => $block > 0 ? max(1, (int) ceil($seconds / $block)) * $block : $seconds,
+            default             => max($seconds, $block),
+        };
+    }
+
     /** Faixas tocadas pelo intervalo, na ordem em que aparecem. */
     public function bandsTouched(DateTimeImmutable $start, int $seconds): array
     {
@@ -146,7 +166,7 @@ class Calculator
             $band = $best;
         }
 
-        $debited = max($seconds, $this->minimumSeconds($band));
+        $debited = $this->debitedSeconds($band, $seconds);
         $unit = $rate !== null ? (float) $rate['hourly_value'] : 0.0;
         $multiplier = $rate !== null ? Rate::multiplierFor($rate, $band) : 1.0;
 
@@ -186,7 +206,7 @@ class Calculator
 
     private function valueOf(string $band, int $seconds, ?array $rate): float
     {
-        $debited = max($seconds, $this->minimumSeconds($band));
+        $debited = $this->debitedSeconds($band, $seconds);
         if ($rate === null || (float) $rate['hourly_value'] <= 0) {
             return (float) $debited;
         }

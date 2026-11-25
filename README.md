@@ -19,10 +19,13 @@ horário, saldos, Per-Event com aprovação e avisos de renovação.
   (ex.: regra que atribui um contrato já vinculado) é descartado em vez de derrubar a gravação do chamado.
 - **Extrato**: toda entrada (criação, recarga, ajuste, renovação) e saída (apontamento) de horas. Nada é apagado:
   tarefa alterada/excluída gera estorno + novo débito. Saldo pode ficar negativo; recarga abate o negativo.
-- **Cobrança mínima**: debitado = max(tempo real, mínimo da faixa). Faixas: horário comercial, fora do horário,
+- **Arredondamento** (por faixa, com o tempo da faixa como bloco/mínimo): *sempre para cima* (padrão; bloco de
+  15 min: 0h12 → 0h15, 1h13 → 1h15, 0h16 → 0h30), *só cobrança mínima* (debitado = max(tempo real, mínimo)) ou
+  *sem arredondamento* (tempo real). Faixas: horário comercial, fora do horário,
   fim de semana/feriado (feriados do calendário do GLPI). Apontamento que cruza faixas: regra de prevalência
-  (início | fim | comercial | não comercial) e, com *arredondar*, a faixa de maior cobrança (empate segue a regra).
-  O tempo debitado vai também para *Custos* do chamado.
+  (início | fim | comercial | não comercial) e, com *cobrar pela faixa mais cara*, a faixa de maior cobrança (empate segue a regra).
+  O tempo debitado vai também para *Custos* do chamado. "Cobrar pela faixa mais cara" (antes "arredondar") só escolhe
+  a faixa de um apontamento que cruza faixas; o arredondamento do tempo é a opção acima.
 - **Per-Event**: chamado numa categoria elegível sem contrato abre aprovação para os pontos focais da entidade
   (ou um grupo de reserva). Aprovado → contrato Per-Event com vigência base e a versão vigente da *Tabela
   Per-Event* (valor/hora e multiplicadores; nova versão só afeta contratos futuros). Enquanto não aprova, o

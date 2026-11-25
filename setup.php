@@ -22,7 +22,7 @@ use GlpiPlugin\Contractlifecycle\Service;
 use GlpiPlugin\Contractlifecycle\Settings;
 use GlpiPlugin\Contractlifecycle\TicketState;
 
-define('PLUGIN_CONTRACTLIFECYCLE_VERSION', '1.1.1');
+define('PLUGIN_CONTRACTLIFECYCLE_VERSION', '1.1.2');
 define('PLUGIN_CONTRACTLIFECYCLE_MIN_GLPI', '11.0.0'); // inclusivo
 define('PLUGIN_CONTRACTLIFECYCLE_MAX_GLPI', '12.1.0'); // exclusivo: aceita 11.0.x até 12.0.x
 
